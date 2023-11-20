@@ -74,22 +74,20 @@ namespace BaGet.Aws
             // TODO: Uploads should be idempotent. This should fail if and only if the blob
             // already exists but has different content.
 
-            using (var seekableContent = new MemoryStream())
+            using var seekableContent = new MemoryStream();
+            await content.CopyToAsync(seekableContent, 4096, cancellationToken);
+
+            seekableContent.Seek(0, SeekOrigin.Begin);
+
+            await _client.PutObjectAsync(new PutObjectRequest
             {
-                await content.CopyToAsync(seekableContent, 4096, cancellationToken);
-
-                seekableContent.Seek(0, SeekOrigin.Begin);
-
-                await _client.PutObjectAsync(new PutObjectRequest
-                {
-                    BucketName = _bucket,
-                    Key = PrepareKey(path),
-                    InputStream = seekableContent,
-                    ContentType = contentType,
-                    AutoResetStreamPosition = false,
-                    AutoCloseStream = false
-                }, cancellationToken);
-            }
+                BucketName = _bucket,
+                Key = PrepareKey(path),
+                InputStream = seekableContent,
+                ContentType = contentType,
+                AutoResetStreamPosition = false,
+                AutoCloseStream = false
+            }, cancellationToken);
 
             return StoragePutResult.Success;
         }
